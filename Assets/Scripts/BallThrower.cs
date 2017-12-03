@@ -65,6 +65,8 @@ public class BallThrower : MonoBehaviour
   TurnController turnController;
 
   Player player;
+
+  float tableDirectionZ;
   
   protected void Awake()
   {
@@ -81,7 +83,7 @@ public class BallThrower : MonoBehaviour
       ballBody = ball.GetComponent<Rigidbody>();
       ballParticleSystem = ball.GetComponent<ParticleSystem>();
       ballVisuals = ball.transform.GetChild(0).gameObject;
-      ballVisuals.SetActive(false);
+      //ballVisuals.SetActive(false);
     }
     onPlayerSpawn?.Invoke(photonView);
 
@@ -102,6 +104,9 @@ public class BallThrower : MonoBehaviour
     }
 
     ballInitialPosition = wand ? wand.transform.position : ballBody.transform.position;
+    ballInitialPosition.z = transform.position.z;
+    tableDirectionZ = transform.position.z > 0 ? -1.0f : 1.0f;
+    print(tableDirectionZ);
   }
 
   protected void Update()
@@ -138,7 +143,7 @@ public class BallThrower : MonoBehaviour
 
     Vector3 myPosition = wand ? wand.transform.position : ballBody.transform.position;
     myPosition.x = xPosition;
-    myPosition.z = ballInitialPosition.z - wandPowerTranslation * power - wandArcTranslation * arc;
+    myPosition.z = ballInitialPosition.z - tableDirectionZ * (wandPowerTranslation * power + wandArcTranslation * arc);
     if (whenBallWasReleased == null
       && ballBody != null)
     {
@@ -148,7 +153,7 @@ public class BallThrower : MonoBehaviour
     {
       wand.transform.position = myPosition;
       Vector3 target = wandRotationTarget ? wandRotationTarget.transform.position : myPosition + new Vector3(0, -1, 0);
-      target = Quaternion.AngleAxis(power * wandPowerRotation + arc * wandArcRotation, Vector3.left) * target;
+      target = myPosition + (Quaternion.AngleAxis(power * wandPowerRotation + arc * wandArcRotation, Vector3.left * tableDirectionZ) * (target - myPosition));
       wand.transform.LookAt(target);
     }
 
@@ -198,11 +203,11 @@ public class BallThrower : MonoBehaviour
       float powerLine = trajectoryPowerRange.x + (trajectoryPowerRange.y - trajectoryPowerRange.x) * li / Math.Max(1, trajectoryLines.Length - 1);
       power = Math.Max(power, powerLine);
       Vector3 position = ballBody.transform.position;
-      position.z = ballInitialPosition.z - wandPowerTranslation * power - wandArcTranslation * arc;
+      position.z = ballInitialPosition.z - tableDirectionZ * (wandPowerTranslation * power + wandArcTranslation * arc);
       Vector3 velocity = Vector3.zero;
       Vector3 direction = position;
       direction.y = maxY * arc;
-      direction.z = 10;
+      direction.z = 10 * tableDirectionZ;
       Vector3 dv = direction * (power * strength * dt / mass);
       velocity += dv;
       dv = gravity * (lineDt / mass);
@@ -284,7 +289,7 @@ public class BallThrower : MonoBehaviour
 
       Vector3 direction = ballBody.transform.position;
       direction.y = maxY * arc;
-      direction.z = -direction.z;
+      direction.z = 10 * tableDirectionZ;
       ballBody.AddForce(direction * power * strength);
       ballBody.useGravity = true;
 
